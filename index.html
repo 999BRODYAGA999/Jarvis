@@ -2,119 +2,63 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>JARVIS CONSTANT</title>
+    <title>JARVIS DEBUG</title>
     <style>
-        body { background: #050505; color: #00ffff; font-family: 'Courier New', monospace; margin: 0; padding: 10px; display: flex; flex-direction: column; height: 100vh; }
-        #chat-history { flex: 1; overflow-y: auto; padding: 10px; border: 1px solid #00ffff; margin-bottom: 10px; border-radius: 5px; }
-        .msg { margin-bottom: 10px; padding: 5px; border-left: 3px solid #00ffff; }
-        .msg-user { color: #ffffff; text-align: right; border-left: none; border-right: 3px solid #ffffff; }
-        button { padding: 20px; background: #004444; color: #00ffff; border: 2px solid #00ffff; cursor: pointer; font-size: 18px; font-weight: bold; border-radius: 10px; }
+        body { background: #000; color: #0f0; font-family: monospace; padding: 10px; }
+        #debug-log { background: #111; padding: 10px; border: 1px solid #0f0; margin-bottom: 10px; min-height: 50px; font-size: 14px; }
+        #history { height: 40vh; overflow-y: auto; border: 1px solid #0f0; padding: 10px; margin-bottom: 10px; }
+        button { background: #0f0; color: #000; border: none; padding: 20px; font-weight: bold; width: 100%; cursor: pointer; }
     </style>
 </head>
 <body>
-    <div id="chat-history"><div class="msg">JARVIS: Ожидаю команды.</div></div>
-    <button id="initBtn" onclick="initJarvis()">🚀 АКТИВАЦИЯ</button>
+    <div style="font-size: 12px;">Система слышит (для отладки):</div>
+    <div id="debug-log">...</div>
+    <div id="history"></div>
+    <button onclick="start()">АКТИВИРОВАТЬ</button>
 
     <script>
-        const chatHistory = document.getElementById("chat-history");
-        let protocols = JSON.parse(localStorage.getItem("jarvis_protocols")) || {};
-
-        function addMessage(sender, text) {
-            const div = document.createElement("div");
-            div.className = sender === 'USER' ? 'msg msg-user' : 'msg';
-            div.innerText = sender + ": " + text;
-            chatHistory.appendChild(div);
-            chatHistory.scrollTop = chatHistory.scrollHeight;
-        }
+        const log = document.getElementById("debug-log");
+        const hist = document.getElementById("history");
 
         function speak(text) {
             window.speechSynthesis.cancel();
-            const s = new SpeechSynthesisUtterance(text);
-            s.lang = "ru-RU";
-            s.pitch = 0.7; 
-            s.rate = 0.9;
-            window.speechSynthesis.speak(s);
+            const u = new SpeechSynthesisUtterance(text);
+            u.lang = "ru-RU";
+            window.speechSynthesis.speak(u);
+            hist.innerHTML += `<div>JARVIS: ${text}</div>`;
         }
 
-        async function reportStatus() {
-            try {
-                let report = "Статус: время " + new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }) + ". ";
-                
-                if (navigator.getBattery) {
-                    const battery = await navigator.getBattery();
-                    report += "Заряд " + Math.round(battery.level * 100) + "%. ";
-                }
+        function process(raw) {
+            const t = raw.toLowerCase().trim();
+            log.innerText = t; // ВЫВОДИМ ТО, ЧТО УСЛЫШАЛИ
 
-                if (navigator.geolocation) {
-                    navigator.geolocation.getCurrentPosition((pos) => {
-                        report += "Координаты " + pos.coords.latitude.toFixed(2) + " и " + pos.coords.longitude.toFixed(2) + ".";
-                        speak(report);
-                        addMessage("JARVIS", report);
-                    }, (err) => {
-                        report += "Гео-ошибка: " + err.message;
-                        speak(report);
-                        addMessage("JARVIS", report);
-                    });
-                } else {
-                    speak(report);
-                    addMessage("JARVIS", report);
-                }
-            } catch(e) {
-                console.error(e);
-                speak("Ошибка датчиков.");
-            }
-        }
-
-        function processCommand(rawText) {
-            const text = rawText.toLowerCase();
-
-            if(text.includes("создай протокол")) {
-                const parts = rawText.split(/: ответ/i);
-                if(parts.length == 2) {
-                    const name = parts[0].replace(/создай протокол/i, "").trim().toLowerCase();
-                    protocols[name] = parts[1].trim();
-                    localStorage.setItem("jarvis_protocols", JSON.stringify(protocols));
-                    speak("Выполнено.");
-                    return;
-                }
-            }
-
-            if(text.includes("статус системы")) { reportStatus(); return; }
-
-            for (let key in protocols) {
-                if (text.includes(key)) {
-                    speak(protocols[key]);
-                    return;
-                }
-            }
-            speak("Готов.");
-        }
-
-        function initJarvis() {
-            document.getElementById("initBtn").style.display = "none";
-            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-            if (!SpeechRecognition) {
-                alert("Ваш браузер не поддерживает голосовой ввод.");
+            // Простая логика без сложных условий
+            if (t.includes("статус")) {
+                speak("Статус системы нормальный.");
                 return;
             }
+            if (t.includes("время")) {
+                speak("Сейчас " + new Date().toLocaleTimeString());
+                return;
+            }
+            
+            speak("Слушаю вас.");
+        }
 
-            const rec = new SpeechRecognition();
-            rec.lang = "ru-RU";
+        function start() {
+            const rec = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+            rec.lang = "ru-RU"; 
             rec.continuous = true;
             rec.interimResults = false;
-
-            rec.onresult = (e) => {
-                const transcript = e.results[e.results.length - 1][0].transcript.toLowerCase();
-                addMessage("USER", transcript);
-                processCommand(transcript);
-            };
-
-            rec.onerror = (e) => { console.log("Ошибка распознавания: " + e.error); rec.start(); };
-            rec.onend = () => { rec.start(); };
             
+            rec.onresult = (e) => {
+                const text = e.results[e.results.length - 1][0].transcript;
+                process(text);
+            };
+            
+            rec.onerror = (e) => { log.innerText = "Ошибка: " + e.error; };
             rec.start();
-            speak("Система активна.");
+            log.innerText = "Микрофон включен...";
         }
     </script>
 </body>
