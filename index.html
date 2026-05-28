@@ -41,7 +41,47 @@
             window.speechSynthesis.speak(s);
         }
 
-        function processCommand(rawText) {
+        function         function processCommand(rawText) {
+            const text = rawText.toLowerCase();
+            
+            // 1. Создание протокола
+            if(text.includes("создай протокол")) {
+                const parts = rawText.split(/: ответ/i);
+                if(parts.length == 2) {
+                    const name = parts[0].replace(/создай протокол/i, "").trim().toLowerCase();
+                    protocols[name] = parts[1].trim();
+                    localStorage.setItem("jarvis_protocols", JSON.stringify(protocols));
+                    addMessage("JARVIS", "Протокол '" + name + "' записан.");
+                    speak("Протокол записан.");
+                    return;
+                }
+            }
+            
+            // 2. Обычные команды
+            if(text.includes("привет")) { 
+                speak("Приветствую, сэр."); 
+                addMessage("JARVIS", "Приветствую, сэр."); 
+                return;
+            }
+
+            // 3. УМНЫЙ ПОИСК ПРОТОКОЛА
+            let foundKey = null;
+            for (let key in protocols) {
+                if (text.includes(key)) {
+                    foundKey = key;
+                    break;
+                }
+            }
+
+            if (foundKey) {
+                const resp = protocols[foundKey];
+                addMessage("JARVIS", resp);
+                speak(resp);
+            } else {
+                addMessage("JARVIS", "Слушаю вас.");
+            }
+        }
+(rawText) {
             const text = rawText.toLowerCase();
             
             if(text.includes("создай протокол")) {
