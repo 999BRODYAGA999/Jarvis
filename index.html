@@ -15,15 +15,15 @@
 <body>
 
     <div id="chat-history">
-        <div class="msg">JARVIS: Ожидаю активации интерфейса. Нажмите кнопку, чтобы разрешить доступ к голосу.</div>
+        <div class="msg">JARVIS: Система готова.</div>
     </div>
 
-    <button id="initBtn" onclick="initJarvis()">🚀 ИНИЦИАЛИЗАЦИЯ (АКТИВИРОВАТЬ СЛУХ)</button>
+    <button id="initBtn" onclick="initJarvis()">🚀 АКТИВАЦИЯ</button>
 
     <script>
         const chatHistory = document.getElementById("chat-history");
-        // Загружаем протоколы из памяти
         let protocols = JSON.parse(localStorage.getItem("jarvis_protocols")) || {};
+        let isOnline = true;
 
         function addMessage(sender, text) {
             const div = document.createElement("div");
@@ -42,65 +42,74 @@
             window.speechSynthesis.speak(s);
         }
 
+        async function reportStatus() {
+            let report = "Статус: ";
+            report += "время " + new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }) + ". ";
+            
+            if ('getBattery' in navigator) {
+                const battery = await navigator.getBattery();
+                report += "Заряд " + Math.round(battery.level * 100) + " процентов. ";
+            }
+
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition((pos) => {
+                    report += "Координаты " + pos.coords.latitude.toFixed(2) + " и " + pos.coords.longitude.toFixed(2) + ".";
+                    addMessage("JARVIS", report);
+                    speak(report);
+                }, () => {
+                    report += "Геолокация недоступна.";
+                    addMessage("JARVIS", report);
+                    speak(report);
+                });
+            } else {
+                addMessage("JARVIS", report);
+                speak(report);
+            }
+        }
+
         function processCommand(rawText) {
             const text = rawText.toLowerCase();
-            
-            // 1. Создание нового протокола
+
+            // Управление режимом
+            if(text.includes("режим онлайн")) { isOnline = true; speak("Выполнено."); return; }
+            if(text.includes("режим оффлайн")) { isOnline = false; speak("Выполнено."); return; }
+
+            // Создание протокола
             if(text.includes("создай протокол")) {
                 const parts = rawText.split(/: ответ/i);
                 if(parts.length == 2) {
                     const name = parts[0].replace(/создай протокол/i, "").trim().toLowerCase();
                     protocols[name] = parts[1].trim();
                     localStorage.setItem("jarvis_protocols", JSON.stringify(protocols));
-                    addMessage("JARVIS", "Протокол '" + name + "' записан.");
-                    speak("Протокол записан.");
+                    speak("Выполнено.");
+                    return;
+                }
+            }
+
+            // Статус
+            if(text.includes("статус системы")) { reportStatus(); return; }
+
+            // Поиск протоколов
+            for (let key in protocols) {
+                if (text.includes(key)) {
+                    speak(protocols[key]);
                     return;
                 }
             }
             
-            // 2. Базовые команды
-            if(text.includes("привет")) { 
-                speak("Приветствую, сэр."); 
-                addMessage("JARVIS", "Приветствую, сэр."); 
-                return;
-            }
-
-            // 3. УМНЫЙ ПОИСК (Проверяем, содержит ли фраза имя протокола)
-            let foundKey = null;
-            for (let key in protocols) {
-                if (text.includes(key)) {
-                    foundKey = key;
-                    break;
-                }
-            }
-
-            if (foundKey) {
-                const resp = protocols[foundKey];
-                addMessage("JARVIS", resp);
-                speak(resp);
-            } else {
-                addMessage("JARVIS", "Слушаю вас.");
-            }
+            speak("Готов.");
         }
 
         function initJarvis() {
             document.getElementById("initBtn").style.display = "none";
-            addMessage("JARVIS", "Голосовой модуль активирован. Я слушаю...");
-            speak("Система готова. Я слушаю, сэр.");
-
             const rec = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
             rec.lang = "ru-RU";
             rec.continuous = true;
-            rec.interimResults = false;
-
             rec.onresult = (e) => {
                 const transcript = e.results[e.results.length - 1][0].transcript.toLowerCase();
-                // Слушаем, когда есть обращение или просто обрабатываем команду
                 addMessage("USER", transcript);
                 processCommand(transcript);
             };
-
-            // Авто-перезапуск при остановке
             rec.onend = () => { rec.start(); };
             rec.start();
         }
