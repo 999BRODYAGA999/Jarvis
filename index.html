@@ -60,11 +60,12 @@
                 return;
             }
 
-            // 3. Математика
-            if (/[\d\+\-\*\/\.]/.test(t) && !t.includes("привет")) {
+            // 3. Математика (Только чистые выражения)
+            // Регулярное выражение разрешает только цифры, операторы, скобки и точки
+            const mathRegex = /^[\d\s\+\-\*\/\.\(\)]+$/;
+            if (mathRegex.test(t)) {
                 try {
-                    const mathExpr = t.replace(/[^-()\d/*+.]/g, '');
-                    const res = eval(mathExpr);
+                    const res = eval(t);
                     speak(res.toString());
                     return;
                 } catch(e) {}
