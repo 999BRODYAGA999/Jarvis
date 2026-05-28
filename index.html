@@ -13,9 +13,8 @@
 </head>
 <body>
     <div id="history"></div>
-    
     <div class="controls">
-        <input type="text" id="userInput" placeholder="Введите команду..." onkeydown="if(event.key==='Enter') sendText()">
+        <input type="text" id="userInput" placeholder="Команда..." onkeydown="if(event.key==='Enter') sendText()">
         <button onclick="sendText()">ОТПРАВИТЬ</button>
         <button onclick="start()">ГОЛОС</button>
     </div>
@@ -32,18 +31,31 @@
             hist.innerHTML += `<div>JARVIS: ${text}</div>`;
         }
 
-        // Обработка команд (общая для текста и голоса)
         function process(raw) {
             const t = raw.toLowerCase().trim();
             hist.innerHTML += `<div>USER: ${t}</div>`;
             
+            // 1. Приоритет: Математика
+            // Ищем выражение, содержащее цифры и операторы
+            if (/[\d\+\-\*\/\.]/.test(t) && !t.includes("привет")) {
+                try {
+                    // Очищаем строку от лишних слов, оставляем только цифры и знаки
+                    const mathExpr = t.replace(/[^-()\d/*+.]/g, '');
+                    const res = eval(mathExpr);
+                    speak(res.toString());
+                    return;
+                } catch(e) {}
+            }
+
+            // 2. Команды
             if (t.includes("время")) { speak(new Date().toLocaleTimeString()); return; }
             if (t.includes("статус")) { speak("Система в норме."); return; }
+            if (t.includes("привет")) { speak("Приветствую."); return; }
             
+            // 3. Fallback (если ничего не понято)
             speak("Готов.");
         }
 
-        // Отправка текста
         function sendText() {
             if (input.value.trim() !== "") {
                 process(input.value);
@@ -51,12 +63,11 @@
             }
         }
 
-        // Голосовой ввод
         function start() {
             const rec = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
             rec.lang = "ru-RU"; 
             rec.onresult = (e) => {
-                process(e.results[0][0].transcript);
+                process(e.results[e.results.length - 1][0].transcript);
             };
             rec.start();
         }
