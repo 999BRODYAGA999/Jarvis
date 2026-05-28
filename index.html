@@ -36,8 +36,21 @@
             const t = raw.toLowerCase().trim();
             hist.innerHTML += `<div>USER: ${t}</div>`;
             
-            // 1. Создание протокола (Гибкий поиск)
-            if (t.includes("протокол") && t.includes("ответ")) {
+            // 1. Приоритет: Удаление
+            if (t.includes("уничтожить") || t.includes("удалить")) {
+                const name = t.replace(/уничтожить|удалить|протокол/g, "").trim();
+                if (protocols[name]) {
+                    delete protocols[name];
+                    localStorage.setItem("jarvis_protocols", JSON.stringify(protocols));
+                    speak("Протокол уничтожен.");
+                } else {
+                    speak("Протокол не найден.");
+                }
+                return;
+            }
+
+            // 2. Создание
+            if (t.includes("создай") && t.includes("ответ")) {
                 const parts = t.split("ответ");
                 const name = parts[0].replace(/создай|новый|протокол/g, "").replace(/['"]/g, "").trim();
                 const content = parts[1].trim();
@@ -47,8 +60,8 @@
                 return;
             }
 
-            // 2. Математика
-            if (/[\d\+\-\*\/\.]/.test(t)) {
+            // 3. Математика
+            if (/[\d\+\-\*\/\.]/.test(t) && !t.includes("привет")) {
                 try {
                     const mathExpr = t.replace(/[^-()\d/*+.]/g, '');
                     const res = eval(mathExpr);
@@ -57,11 +70,11 @@
                 } catch(e) {}
             }
 
-            // 3. Команды
+            // 4. Команды
             if (t.includes("время")) { speak(new Date().toLocaleTimeString()); return; }
             if (t.includes("статус")) { speak("Система в норме."); return; }
             
-            // 4. Поиск протокола
+            // 5. Поиск
             for (let key in protocols) {
                 if (t.includes(key)) { speak(protocols[key]); return; }
             }
