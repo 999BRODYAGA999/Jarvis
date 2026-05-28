@@ -36,7 +36,22 @@
             const t = raw.toLowerCase().trim();
             hist.innerHTML += `<div>USER: ${t}</div>`;
             
-            // 1. Приоритет: Удаление
+            // 1. ПРИОРИТЕТ: Математика (Ищем совпадение цифр и знаков)
+            // Ищем числа, разделенные знаками +, -, *, /
+            const mathMatch = t.match(/(\d[\d\s\+\-\*\/\.]+)/);
+            if (mathMatch) {
+                try {
+                    const cleanMath = mathMatch[0].replace(/\s/g, ''); // убираем пробелы
+                    // Проверка, что это действительно математика, а не просто числа
+                    if (/[\+\-\*\/\.]/.test(cleanMath)) {
+                        const res = eval(cleanMath);
+                        speak(res.toString());
+                        return;
+                    }
+                } catch(e) { console.log("Math Error:", e); }
+            }
+
+            // 2. Команды управления
             if (t.includes("уничтожить") || t.includes("удалить")) {
                 const name = t.replace(/уничтожить|удалить|протокол/g, "").trim();
                 if (protocols[name]) {
@@ -49,7 +64,6 @@
                 return;
             }
 
-            // 2. Создание
             if (t.includes("создай") && t.includes("ответ")) {
                 const parts = t.split("ответ");
                 const name = parts[0].replace(/создай|новый|протокол/g, "").replace(/['"]/g, "").trim();
@@ -60,22 +74,10 @@
                 return;
             }
 
-            // 3. Математика (Только чистые выражения)
-            // Регулярное выражение разрешает только цифры, операторы, скобки и точки
-            const mathRegex = /^[\d\s\+\-\*\/\.\(\)]+$/;
-            if (mathRegex.test(t)) {
-                try {
-                    const res = eval(t);
-                    speak(res.toString());
-                    return;
-                } catch(e) {}
-            }
-
-            // 4. Команды
             if (t.includes("время")) { speak(new Date().toLocaleTimeString()); return; }
             if (t.includes("статус")) { speak("Система в норме."); return; }
             
-            // 5. Поиск
+            // 3. Поиск протоколов
             for (let key in protocols) {
                 if (t.includes(key)) { speak(protocols[key]); return; }
             }
