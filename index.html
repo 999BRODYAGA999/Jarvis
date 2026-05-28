@@ -22,6 +22,7 @@
     <script>
         const hist = document.getElementById("history");
         const input = document.getElementById("userInput");
+        let protocols = JSON.parse(localStorage.getItem("jarvis_protocols")) || {};
 
         function speak(text) { 
             window.speechSynthesis.cancel();
@@ -35,11 +36,20 @@
             const t = raw.toLowerCase().trim();
             hist.innerHTML += `<div>USER: ${t}</div>`;
             
-            // 1. Приоритет: Математика
-            // Ищем выражение, содержащее цифры и операторы
-            if (/[\d\+\-\*\/\.]/.test(t) && !t.includes("привет")) {
+            // 1. Создание протокола (Гибкий поиск)
+            if (t.includes("протокол") && t.includes("ответ")) {
+                const parts = t.split("ответ");
+                const name = parts[0].replace(/создай|новый|протокол/g, "").replace(/['"]/g, "").trim();
+                const content = parts[1].trim();
+                protocols[name] = content;
+                localStorage.setItem("jarvis_protocols", JSON.stringify(protocols));
+                speak("Принято.");
+                return;
+            }
+
+            // 2. Математика
+            if (/[\d\+\-\*\/\.]/.test(t)) {
                 try {
-                    // Очищаем строку от лишних слов, оставляем только цифры и знаки
                     const mathExpr = t.replace(/[^-()\d/*+.]/g, '');
                     const res = eval(mathExpr);
                     speak(res.toString());
@@ -47,12 +57,15 @@
                 } catch(e) {}
             }
 
-            // 2. Команды
+            // 3. Команды
             if (t.includes("время")) { speak(new Date().toLocaleTimeString()); return; }
             if (t.includes("статус")) { speak("Система в норме."); return; }
-            if (t.includes("привет")) { speak("Приветствую."); return; }
             
-            // 3. Fallback (если ничего не понято)
+            // 4. Поиск протокола
+            for (let key in protocols) {
+                if (t.includes(key)) { speak(protocols[key]); return; }
+            }
+            
             speak("Готов.");
         }
 
