@@ -2,25 +2,29 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>JARVIS DEBUG</title>
+    <title>JARVIS CONSTANT</title>
     <style>
-        body { background: #000; color: #0f0; font-family: monospace; padding: 10px; }
-        #debug-log { background: #111; padding: 10px; border: 1px solid #0f0; margin-bottom: 10px; min-height: 50px; font-size: 14px; }
-        #history { height: 40vh; overflow-y: auto; border: 1px solid #0f0; padding: 10px; margin-bottom: 10px; }
-        button { background: #0f0; color: #000; border: none; padding: 20px; font-weight: bold; width: 100%; cursor: pointer; }
+        body { background: #000; color: #0f0; font-family: monospace; padding: 10px; display: flex; flex-direction: column; height: 95vh; }
+        #history { flex: 1; overflow-y: auto; border: 1px solid #0f0; padding: 10px; margin-bottom: 10px; }
+        .controls { display: flex; gap: 5px; }
+        input { flex: 1; background: #111; color: #0f0; border: 1px solid #0f0; padding: 10px; }
+        button { background: #0f0; color: #000; border: none; padding: 10px; font-weight: bold; cursor: pointer; }
     </style>
 </head>
 <body>
-    <div style="font-size: 12px;">Система слышит (для отладки):</div>
-    <div id="debug-log">...</div>
     <div id="history"></div>
-    <button onclick="start()">АКТИВИРОВАТЬ</button>
+    
+    <div class="controls">
+        <input type="text" id="userInput" placeholder="Введите команду..." onkeydown="if(event.key==='Enter') sendText()">
+        <button onclick="sendText()">ОТПРАВИТЬ</button>
+        <button onclick="start()">ГОЛОС</button>
+    </div>
 
     <script>
-        const log = document.getElementById("debug-log");
         const hist = document.getElementById("history");
+        const input = document.getElementById("userInput");
 
-        function speak(text) {
+        function speak(text) { 
             window.speechSynthesis.cancel();
             const u = new SpeechSynthesisUtterance(text);
             u.lang = "ru-RU";
@@ -28,37 +32,33 @@
             hist.innerHTML += `<div>JARVIS: ${text}</div>`;
         }
 
+        // Обработка команд (общая для текста и голоса)
         function process(raw) {
             const t = raw.toLowerCase().trim();
-            log.innerText = t; // ВЫВОДИМ ТО, ЧТО УСЛЫШАЛИ
-
-            // Простая логика без сложных условий
-            if (t.includes("статус")) {
-                speak("Статус системы нормальный.");
-                return;
-            }
-            if (t.includes("время")) {
-                speak("Сейчас " + new Date().toLocaleTimeString());
-                return;
-            }
+            hist.innerHTML += `<div>USER: ${t}</div>`;
             
-            speak("Слушаю вас.");
+            if (t.includes("время")) { speak(new Date().toLocaleTimeString()); return; }
+            if (t.includes("статус")) { speak("Система в норме."); return; }
+            
+            speak("Готов.");
         }
 
+        // Отправка текста
+        function sendText() {
+            if (input.value.trim() !== "") {
+                process(input.value);
+                input.value = "";
+            }
+        }
+
+        // Голосовой ввод
         function start() {
             const rec = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
             rec.lang = "ru-RU"; 
-            rec.continuous = true;
-            rec.interimResults = false;
-            
             rec.onresult = (e) => {
-                const text = e.results[e.results.length - 1][0].transcript;
-                process(text);
+                process(e.results[0][0].transcript);
             };
-            
-            rec.onerror = (e) => { log.innerText = "Ошибка: " + e.error; };
             rec.start();
-            log.innerText = "Микрофон включен...";
         }
     </script>
 </body>
